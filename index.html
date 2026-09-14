@@ -375,7 +375,7 @@
       </div>
     </div>
     <div class="flex flex-col gap-1" style="min-width:260px;">
-      <label class="text-[11px] text-slate-500">组织（多选）</label>
+      <label class="text-[11px] text-slate-500">组织（多选 · 选战区按战区聚合，选城市按城市对比）</label>
       <div class="msel" id="msel-cmp">
         <div class="msel-trigger" onclick="toggleMsel('msel-cmp',event)">
           <span class="msel-text">全部战区/城市</span>
@@ -595,15 +595,7 @@ function deptChange(box){
   renderMselTrigger('msel-dept');
 }
 function cmpChange(box){
-  if(box.dataset.kind==='warzone'){
-    const wz=box.value;
-    document.querySelectorAll(`#msel-cmp input[data-wz="${wz}"]`).forEach(c=>c.checked=box.checked);
-  }else{
-    const wz=box.dataset.wz;
-    const siblings=[...document.querySelectorAll(`#msel-cmp input[data-wz="${wz}"]`)];
-    const wzBox=document.querySelector(`#msel-cmp input[value="${wz}"]`);
-    wzBox.checked=siblings.every(s=>s.checked);
-  }
+  // 战区与城市互不联动，各自独立勾选
   renderMselTrigger('msel-cmp');
 }
 function resetTopFilter(){
@@ -938,10 +930,18 @@ function applyCmpFilter(){
   cmpState.zones=zones;cmpState.cities=cities;
   renderCmpTrend();renderEfficiency();renderRank();
 }
-function activeTeams(){
+/* 对比实体：选中战区→战区聚合实体；选中城市→城市实体；未选→全部城市 */
+const WZ_COLOR={'战区1':'#4338ca','战区2':'#0e7490'};
+const WZ_BG={'战区1':'rgba(67,56,202,.15)','战区2':'rgba(14,116,144,.15)'};
+function cmpEntities(){
   const zones=cmpState.zones||[],cities=cmpState.cities||[];
-  if(!zones.length&&!cities.length)return TEAMS.slice();
-  return TEAMS.filter(t=>cities.includes(t.name)||zones.includes(t.wz));
+  const ents=[];
+  zones.forEach(z=>{
+    ents.push({kind:'wz',id:z,name:z,color:WZ_COLOR[z],bg:WZ_BG[z],teamIds:TEAMS.filter(t=>t.wz===z).map(t=>t.id)});
+  });
+  const cityList=(!zones.length&&!cities.length)?TEAMS.slice():TEAMS.filter(t=>cities.includes(t.name));
+  cityList.forEach(t=>ents.push({kind:'city',id:t.id,name:t.name,wz:t.wz,color:t.color,bg:t.bg,teamIds:[t.id]}));
+  return ents;
 }
 let cmpTrendChart=null;
 function renderCmpTrend(){
@@ -952,10 +952,20 @@ function renderCmpTrend(){
     const d=new Date(base.getTime()-i*86400000);
     labels.push((d.getMonth()+1)+'/'+d.getDate());
   }
-  const teams=activeTeams();
-  const datasets=teams.map((t,idx)=>{
-    const data=labels.map((_,i)=>Math.round(8000+rnd(i*13+idx*7+days)*(30000+idx*4000)));
-    return {label:t.name+'（'+t.wz+'）',data,borderColor:t.color,backgroundColor:t.bg,borderWidth:2,pointRadius:2.5,tension:.35,fill:false};
+  const ents=cmpEntities();
+  const datasets=ents.map(e=>{
+    let data;
+    if(e.kind==='wz'){
+      data=labels.map(()=>0);
+      TEAMS.filter(t=>t.wz===e.id).forEach(t=>{
+        const idx=TEAMS.findIndex(x=>x.id===t.id);
+        labels.forEach((_,i)=>{data[i]+=Math.round(8000+rnd(i*13+idx*7+days)*(30000+idx*4000));});
+      });
+    }else{
+      const idx=TEAMS.findIndex(x=>x.id===e.id);
+      data=labels.map((_,i)=>Math.round(8000+rnd(i*13+idx*7+days)*(30000+idx*4000)));
+    }
+    return {label:e.kind==='wz'?e.name:e.name+'（'+e.wz+'）',data,borderColor:e.color,backgroundColor:e.bg,borderWidth:2,pointRadius:2.5,tension:.35,fill:false};
   });
   const cfg={
     type:'line',
@@ -976,9 +986,9 @@ function renderCmpTrend(){
 
 let cmpEffChart=null;
 const EFF_METRICS=['人均产能','URPU','人均优质素材数','测试消耗','ROI'];
-function teamEfficiency(t){
-  const s=teamStats(t);
-  const testCost=MATERIALS.filter(m=>m.teamId===t.id&&m.stage==='测试').reduce((a,m)=>a+m.cost,0);
+function entityEfficiency(e){
+  const s=entityStats(e);
+  const testCost=MATERIALS.filter(m=>e.teamIds.includes(m.teamId)&&m.stage==='测试').reduce((a,m)=>a+m.cost,0);
   return {
     '人均产能':s.perCapita,
     'URPU':s.urpu,
@@ -994,14 +1004,14 @@ function fmtEff(k,v){
   return v.toFixed(2);
 }
 function renderEfficiency(){
-  const teams=activeTeams();
-  const eff=teams.map(teamEfficiency);
+  const ents=cmpEntities();
+  const eff=ents.map(entityEfficiency);
   const maxes={};
   EFF_METRICS.forEach(k=>{maxes[k]=Math.max.apply(null,eff.map(e=>e[k]).concat([0.0001]));});
-  const datasets=teams.map((t,i)=>({
-    label:t.name,
+  const datasets=ents.map((e,i)=>({
+    label:e.name,
     data:EFF_METRICS.map(k=>+(eff[i][k]/maxes[k]*100).toFixed(1)),
-    backgroundColor:t.color,
+    backgroundColor:e.color,
     borderRadius:3,
     maxBarThickness:24
   }));
@@ -1014,9 +1024,9 @@ function renderEfficiency(){
       plugins:{
         legend:{position:'bottom',labels:{boxWidth:10,boxHeight:10,font:{size:11}}},
         tooltip:{callbacks:{label:function(ctx){
-          const t=teams[ctx.datasetIndex];
+          const e=ents[ctx.datasetIndex];
           const k=EFF_METRICS[ctx.dataIndex];
-          return ' '+t.name+'：'+fmtEff(k,teamEfficiency(t)[k])+'（归一化 '+ctx.parsed.y+'）';
+          return ' '+e.name+'：'+fmtEff(k,entityEfficiency(e)[k])+'（归一化 '+ctx.parsed.y+'）';
         }}}
       },
       scales:{
@@ -1027,24 +1037,25 @@ function renderEfficiency(){
   };
   if(cmpEffChart)cmpEffChart.destroy();
   cmpEffChart=new Chart(document.getElementById('cmpEffChart'),cfg);
-  document.getElementById('eff-legend').innerHTML=teams.map((t,i)=>{
-    const e=eff[i];
+  document.getElementById('eff-legend').innerHTML=ents.map((e,i)=>{
+    const v=eff[i];
+    const sub=e.kind==='wz'?'战区聚合':e.wz;
     return `<div class="flex items-start gap-2 p-2 rounded-lg hover:bg-slate-50">
-      <span class="dot mt-1" style="background:${t.color}"></span>
+      <span class="dot mt-1" style="background:${e.color}"></span>
       <div class="flex-1">
-        <div class="text-slate-800 font-medium">${t.name} <span class="text-[10px] text-slate-400">${t.wz}</span></div>
+        <div class="text-slate-800 font-medium">${e.name} <span class="text-[10px] text-slate-400">${sub}</span></div>
         <div class="text-[11px] text-slate-500 mt-1 grid grid-cols-2 gap-x-2 gap-y-0.5">
-          ${EFF_METRICS.map(k=>`<span>${k} <b class="text-slate-700">${fmtEff(k,e[k])}</b></span>`).join('')}
+          ${EFF_METRICS.map(k=>`<span>${k} <b class="text-slate-700">${fmtEff(k,v[k])}</b></span>`).join('')}
         </div>
       </div>
     </div>`;
   }).join('');
 }
 
-/* 6.4 排名二级表：一级=城市组，二级=组内素材师 */
+/* 6.4 排名二级表：一级=对比实体（战区聚合/城市组），二级=实体内素材师 */
 const groupCollapsed={};
-function teamStats(t){
-  const mats=MATERIALS.filter(m=>m.teamId===t.id);
+function entityStats(e){
+  const mats=MATERIALS.filter(m=>e.teamIds.includes(m.teamId));
   const cost=mats.reduce((s,m)=>s+m.cost,0);
   const output=mats.length;
   const quality=mats.filter(m=>m.stage==='优质').length;
@@ -1054,8 +1065,8 @@ function teamStats(t){
   const roi=cost?+(mats.reduce((s,m)=>s+m.cost*m.roi,0)/cost).toFixed(2):0;
   return {cost,output,quality,homo,dark,people,roi,perCapita:+(output/people).toFixed(1),perQuality:+(quality/people).toFixed(2),urpu:Math.round(cost/people)};
 }
-function memberStats(t,author){
-  const mats=MATERIALS.filter(m=>m.teamId===t.id&&m.author===author);
+function memberStats(e,author){
+  const mats=MATERIALS.filter(m=>e.teamIds.includes(m.teamId)&&m.author===author);
   const cost=mats.reduce((s,m)=>s+m.cost,0);
   const output=mats.length;
   const quality=mats.filter(m=>m.stage==='优质').length;
@@ -1066,16 +1077,18 @@ function memberStats(t,author){
 }
 function renderRank(){
   const rows=[];
-  const groups=activeTeams().map(t=>({t,s:teamStats(t)})).sort((a,b)=>b.s.cost-a.s.cost);
+  const groups=cmpEntities().map(e=>({e,s:entityStats(e)})).sort((a,b)=>b.s.cost-a.s.cost);
   groups.forEach((g,i)=>{
-    const s=g.s,t=g.t;
+    const s=g.s,e=g.e;
     const rank=i+1;
     const badge=rank<=3?`<span class="rank-badge rank-${rank}">${rank}</span>`:`<span class="rank-badge rank-n">${rank}</span>`;
-    const collapsed=!!groupCollapsed[t.id];
-    const wzPill=t.wz==='战区1'?'pill-indigo':'pill-cyan';
-    rows.push(`<tr class="group-row" onclick="toggleGroup('${t.id}')">
+    const collapsed=!!groupCollapsed[e.id];
+    const pill=e.kind==='wz'
+      ?`<span class="pill ${e.id==='战区1'?'pill-indigo':'pill-cyan'}" style="padding:1px 6px;font-size:10px;margin-left:4px;">战区聚合</span>`
+      :`<span class="pill ${e.wz==='战区1'?'pill-indigo':'pill-cyan'}" style="padding:1px 6px;font-size:10px;margin-left:4px;">${e.wz}</span>`;
+    rows.push(`<tr class="group-row" onclick="toggleGroup('${e.id}')">
       <td>${badge}</td>
-      <td><span class="toggle-ico ${collapsed?'collapsed':''}">▼</span> <span class="dot" style="background:${t.color}"></span>${t.name} <span class="pill ${wzPill}" style="padding:1px 6px;font-size:10px;margin-left:4px;">${t.wz}</span></td>
+      <td><span class="toggle-ico ${collapsed?'collapsed':''}">▼</span> <span class="dot" style="background:${e.color}"></span>${e.name} ${pill}</td>
       <td class="num">${s.people}</td>
       <td class="num">${s.output}</td>
       <td class="num">${s.perCapita}</td>
@@ -1088,8 +1101,8 @@ function renderRank(){
       <td class="num">${s.dark} <span class="text-slate-400">(${fmtPct(s.dark/s.output)})</span></td>
     </tr>`);
     if(!collapsed){
-      const members=[...new Set(MATERIALS.filter(m=>m.teamId===t.id).map(m=>m.author))]
-        .map(a=>({a,s:memberStats(t,a)})).sort((x,y)=>y.s.cost-x.s.cost);
+      const members=[...new Set(MATERIALS.filter(m=>e.teamIds.includes(m.teamId)).map(m=>m.author))]
+        .map(a=>({a,s:memberStats(e,a)})).sort((x,y)=>y.s.cost-x.s.cost);
       members.forEach(mb=>{
         rows.push(`<tr class="child-row">
           <td></td>
