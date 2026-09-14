@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>短剧素材投放数据看板</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:#f8fafc;color:#0f172a;}
+  .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;}
+  .sec-title{font-size:16px;font-weight:600;color:#0f172a;}
+  .sec-sub{font-size:12px;color:#64748b;}
+  /* pill */
+  .pill{display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;font-size:12px;line-height:18px;font-weight:500;border:1px solid transparent;white-space:nowrap;}
+  .pill-slate{background:#f1f5f9;color:#475569;border-color:#e2e8f0;}
+  .pill-violet{background:#f5f3ff;color:#6d28d9;border-color:#ddd6fe;}
+  .pill-blue{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;}
+  .pill-indigo{background:#eef2ff;color:#4338ca;border-color:#c7d2fe;}
+  .pill-cyan{background:#ecfeff;color:#0e7490;border-color:#a5f3fc;}
+  .pill-emerald{background:#ecfdf5;color:#047857;border-color:#a7f3d0;}
+  .pill-amber{background:#fffbeb;color:#b45309;border-color:#fde68a;}
+  .pill-pink{background:#fdf2f8;color:#be185d;border-color:#fbcfe8;}
+  .pill-rose{background:#fff1f2;color:#be123c;border-color:#fecdd3;}
+  .pill-purple{background:#faf5ff;color:#7e22ce;border-color:#e9d5ff;}
+  /* tab button */
+  .tab-btn{padding:6px 14px;border-radius:8px;font-size:13px;color:#475569;background:#f1f5f9;border:1px solid transparent;cursor:pointer;transition:all .15s;}
+  .tab-btn:hover{background:#e2e8f0;}
+  .tab-btn.active{background:#7c3aed;color:#fff;border-color:#7c3aed;}
+  .tab-btn.active-blue{background:#2563eb;color:#fff;border-color:#2563eb;}
+  /* form */
+  .inp{height:32px;padding:0 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;background:#fff;outline:none;color:#0f172a;}
+  .inp:focus{border-color:#a78bfa;box-shadow:0 0 0 2px #ede9fe;}
+  .btn-primary{height:32px;padding:0 16px;background:#7c3aed;color:#fff;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;}
+  .btn-primary:hover{background:#6d28d9;}
+  .btn-ghost{height:32px;padding:0 14px;background:#fff;color:#475569;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;cursor:pointer;}
+  .btn-ghost:hover{background:#f8fafc;border-color:#cbd5e1;}
+  /* multiselect */
+  .msel{position:relative;}
+  .msel-trigger{min-height:32px;padding:4px 30px 4px 10px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;flex-wrap:wrap;gap:4px;position:relative;color:#0f172a;}
+  .msel-trigger:hover{border-color:#cbd5e1;}
+  .msel-arrow{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:10px;pointer-events:none;}
+  .msel-text{color:#94a3b8;}
+  .msel-tag{background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;padding:1px 6px;border-radius:4px;font-size:11px;line-height:16px;}
+  .msel-panel{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 8px 24px rgba(15,23,42,.08);z-index:40;max-height:280px;overflow-y:auto;display:none;padding:4px;}
+  .msel.open .msel-panel{display:block;}
+  .msel-group{font-size:11px;color:#94a3b8;padding:6px 8px 4px;font-weight:500;}
+  .msel-opt{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:13px;color:#334155;}
+  .msel-opt:hover{background:#f8fafc;}
+  .msel-opt input{accent-color:#7c3aed;}
+  /* table */
+  table.tb{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;}
+  table.tb thead th{background:#f8fafc;color:#475569;font-weight:500;font-size:12px;padding:10px 12px;text-align:left;border-bottom:1px solid #e2e8f0;white-space:nowrap;position:sticky;top:0;z-index:5;}
+  table.tb thead th.sortable{cursor:pointer;user-select:none;}
+  table.tb thead th.sortable:hover{background:#f1f5f9;color:#7c3aed;}
+  table.tb thead th .sort-ind{display:inline-block;margin-left:4px;color:#cbd5e1;font-size:10px;}
+  table.tb thead th.sorted .sort-ind{color:#7c3aed;}
+  table.tb tbody td{padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#334155;vertical-align:middle;}
+  table.tb tbody tr:hover{background:#fafafa;}
+  .thumb{width:44px;height:60px;border-radius:4px;object-fit:cover;background:#e2e8f0;display:block;}
+  .url-link{color:#7c3aed;text-decoration:none;font-size:12px;cursor:pointer;}
+  .url-link:hover{text-decoration:underline;}
+  /* KPI */
+  .kpi-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px 12px;text-align:center;}
+  .kpi-label{font-size:12px;color:#64748b;margin-bottom:8px;}
+  .kpi-value{font-size:24px;font-weight:600;color:#0f172a;line-height:1.2;font-variant-numeric:tabular-nums;}
+  .kpi-delta{font-size:11px;color:#94a3b8;margin-top:6px;}
+  .kpi-delta .up{color:#059669;}
+  .kpi-delta .down{color:#dc2626;}
+  /* rank badge */
+  .rank-badge{width:22px;height:22px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;}
+  .rank-1{background:linear-gradient(135deg,#f59e0b,#d97706);}
+  .rank-2{background:linear-gradient(135deg,#94a3b8,#64748b);}
+  .rank-3{background:linear-gradient(135deg,#c2854a,#a16207);}
+  .rank-n{background:#f1f5f9;color:#64748b;}
+  /* group row */
+  tr.group-row td{background:#f8fafc;font-weight:600;color:#0f172a;border-top:1px solid #e2e8f0;}
+  tr.group-row:hover td{background:#f1f5f9;}
+  tr.child-row td:first-child{padding-left:36px;color:#64748b;}
+  tr.child-row{background:#fff;}
+  .member-avatar{width:18px;height:18px;border-radius:50%;background:#e2e8f0;color:#475569;display:inline-flex;align-items:center;justify-content:center;font-size:10px;margin-right:6px;vertical-align:middle;}
+  .toggle-ico{display:inline-block;width:14px;color:#94a3b8;cursor:pointer;font-size:10px;transition:transform .15s;}
+  .toggle-ico.collapsed{transform:rotate(-90deg);}
+  /* modal */
+  .modal-mask{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;z-index:100;}
+  .modal-mask.open{display:flex;}
+  .modal-card{background:#fff;border-radius:12px;width:380px;max-width:92vw;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+  .video-wrap{height:340px;background:#0f172a;display:flex;align-items:center;justify-content:center;position:relative;}
+  .video-ph{height:100%;aspect-ratio:9/16;background:linear-gradient(160deg,#312e81 0%,#7c3aed 55%,#db2777 100%);position:relative;display:flex;align-items:center;justify-content:center;color:#fff;}
+  .video-ph .play{width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.2);border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:22px;}
+  .video-ph .dur{position:absolute;right:10px;bottom:10px;background:rgba(0,0,0,.5);padding:2px 6px;border-radius:4px;font-size:11px;}
+  /* misc */
+  .divider{height:1px;background:#f1f5f9;margin:12px 0;}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle;}
+  .sticky-top{position:sticky;top:0;z-index:30;background:#f8fafc;}
+  .num{font-variant-numeric:tabular-nums;}
+  /* pagination */
+  .page-btn{min-width:28px;height:28px;padding:0 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;color:#475569;background:#fff;cursor:pointer;}
+  .page-btn:hover:not(:disabled):not(.active){border-color:#a78bfa;color:#7c3aed;}
+  .page-btn.active{background:#7c3aed;border-color:#7c3aed;color:#fff;}
+  .page-btn:disabled{opacity:.45;cursor:not-allowed;}
+  .yes{color:#059669;}
+  .no{color:#94a3b8;}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="bg-white border-b border-slate-200">
+  <div class="max-w-[1440px] mx-auto px-6 h-14 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white text-sm font-semibold">素</div>
+      <div>
+        <div class="text-sm font-semibold text-slate-900">短剧素材投放数据看板</div>
+        <div class="text-[11px] text-slate-500">Material Delivery Analytics</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 text-xs text-slate-500">
+      <span>数据更新时间：2026-09-11 09:00</span>
+      <span class="w-px h-4 bg-slate-200"></span>
+      <span class="flex items-center gap-2"><span class="w-6 h-6 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-[11px] font-medium">沐</span>沐雨晴</span>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-[1440px] mx-auto px-6 py-5 space-y-5">
+
+<!-- ========== 1. 顶部维度切换查询区 ========== -->
+<section class="card p-4">
+  <div class="flex flex-wrap items-end gap-4">
+    <!-- 日期范围 -->
+    <div class="flex flex-col gap-1.5">
+      <label class="text-[11px] text-slate-500">日期范围</label>
+      <div class="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
+        <button class="tab-btn active" data-range="today" onclick="setTopRange('today',this)">当日</button>
+        <button class="tab-btn" data-range="7d" onclick="setTopRange('7d',this)">7日</button>
+        <button class="tab-btn" data-range="30d" onclick="setTopRange('30d',this)">30日</button>
+        <button class="tab-btn" data-range="custom" onclick="setTopRange('custom',this)">自定义</button>
+      </div>
+    </div>
+    <div id="top-custom-range" class="flex-col gap-1.5 hidden">
+      <label class="text-[11px] text-slate-500">自定义时间段（30日内）</label>
+      <div class="flex items-center gap-2">
+        <input type="date" class="inp" id="top-start" value="2026-08-13">
+        <span class="text-slate-400 text-xs">至</span>
+        <input type="date" class="inp" id="top-end" value="2026-09-11">
+      </div>
+    </div>
+    <!-- 部门 -->
+    <div class="flex flex-col gap-1.5" style="min-width:260px;">
+      <label class="text-[11px] text-slate-500">部门（多选）</label>
+      <div class="msel" id="msel-dept">
+        <div class="msel-trigger" onclick="toggleMsel('msel-dept',event)">
+          <span class="msel-text">全部战区/城市</span>
+          <span class="msel-arrow">▼</span>
+        </div>
+        <div class="msel-panel">
+          <div class="msel-group">战区</div>
+          <label class="msel-opt"><input type="checkbox" value="战区1" data-kind="warzone" onchange="deptChange(this)">战区1</label>
+          <label class="msel-opt"><input type="checkbox" value="战区2" data-kind="warzone" onchange="deptChange(this)">战区2</label>
+          <div class="msel-group">城市</div>
+          <label class="msel-opt"><input type="checkbox" value="广州" data-kind="city" data-wz="战区1" onchange="deptChange(this)">广州（战区1）</label>
+          <label class="msel-opt"><input type="checkbox" value="重庆" data-kind="city" data-wz="战区1" onchange="deptChange(this)">重庆（战区1）</label>
+          <label class="msel-opt"><input type="checkbox" value="北京" data-kind="city" data-wz="战区1" onchange="deptChange(this)">北京（战区1）</label>
+          <label class="msel-opt"><input type="checkbox" value="杭州" data-kind="city" data-wz="战区1" onchange="deptChange(this)">杭州（战区1）</label>
+          <label class="msel-opt"><input type="checkbox" value="南京" data-kind="city" data-wz="战区2" onchange="deptChange(this)">南京（战区2）</label>
+          <label class="msel-opt"><input type="checkbox" value="合肥" data-kind="city" data-wz="战区2" onchange="deptChange(this)">合肥（战区2）</label>
+        </div>
+      </div>
+    </div>
+    <!-- 创作维度 -->
+    <div class="flex flex-col gap-1.5">
+      <label class="text-[11px] text-slate-500">创作维度</label>
+      <div class="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
+        <button class="tab-btn active" data-orig="all" onclick="setOrig('all',this)">全部</button>
+        <button class="tab-btn" data-orig="原创" onclick="setOrig('原创',this)">原创</button>
+        <button class="tab-btn" data-orig="非原创" onclick="setOrig('非原创',this)">非原创</button>
+      </div>
+    </div>
+    <!-- 查询/重置 -->
+    <div class="flex items-center gap-2 ml-auto">
+      <button class="btn-ghost" onclick="resetTopFilter()">重置</button>
+      <button class="btn-primary" onclick="applyTopFilter()">查询</button>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <div class="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+    <span>当前筛选：</span>
+    <span class="pill pill-violet" id="chip-range">日期：当日</span>
+    <span class="pill pill-indigo" id="chip-dept">部门：全部</span>
+    <span class="pill pill-purple" id="chip-orig">创作维度：全部</span>
+  </div>
+</section>
+
+<!-- ========== 2. KPI 看板 ========== -->
+<section>
+  <div class="flex items-center justify-between mb-3">
+    <div>
+      <div class="sec-title">核心指标</div>
+      <div class="sec-sub">按当前筛选条件统计，环比对齐上一周期</div>
+    </div>
+  </div>
+  <div class="grid grid-cols-6 gap-3" id="kpi-grid"></div>
+</section>
+
+<!-- ========== 3. 产能趋势图 ========== -->
+<section class="card p-4">
+  <div class="flex items-center justify-between mb-3">
+    <div>
+      <div class="sec-title">产能趋势</div>
+      <div class="sec-sub">按日展示产出量与消耗走势</div>
+    </div>
+    <div class="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
+      <button class="tab-btn active" data-metric="all" onclick="setTrendMetric('all',this)">产出+消耗</button>
+      <button class="tab-btn" data-metric="output" onclick="setTrendMetric('output',this)">仅产出</button>
+      <button class="tab-btn" data-metric="cost" onclick="setTrendMetric('cost',this)">仅消耗</button>
+      <button class="tab-btn" data-metric="quality" onclick="setTrendMetric('quality',this)">优质率</button>
+    </div>
+  </div>
+  <div style="height:340px;"><canvas id="trendChart"></canvas></div>
+</section>
+
+<!-- ========== 4. 测试素材数据 ========== -->
+<section class="card p-4">
+  <div class="flex items-center justify-between mb-3">
+    <div>
+      <div class="sec-title">测试素材数据</div>
+      <div class="sec-sub">处于测试阶段的素材投放明细，默认按消耗倒序</div>
+    </div>
+    <div class="text-xs text-slate-500">共 <span id="test-count" class="text-slate-900 font-medium">0</span> 条</div>
+  </div>
+  <!-- 4.1 查询 -->
+  <div class="bg-slate-50 rounded-lg p-3 mb-3 flex flex-wrap items-end gap-3">
+    <div class="flex flex-col gap-1">
+      <label class="text-[11px] text-slate-500">时间范围</label>
+      <select class="inp" id="test-range" onchange="applyTestFilter()" style="width:120px;">
+        <option value="1">近1天</option>
+        <option value="7" selected>近7天</option>
+        <option value="15">近15天</option>
+        <option value="30">近30天</option>
+      </select>
+    </div>
+    <div class="flex flex-col gap-1">
+      <label class="text-[11px] text-slate-500">素材ID</label>
+      <input type="text" class="inp" id="test-id" placeholder="支持精确/模糊" style="width:150px;" oninput="applyTestFilter()">
+    </div>
+    <div class="flex flex-col gap-1">
+      <label class="text-[11px] text-slate-500">素材名称</label>
+      <input type="text" class="inp" id="test-name" placeholder="关键字" style="width:170px;" oninput="applyTestFilter()">
+    </div>
+    <div class="flex flex-col gap-1">
+      <label class="text-[11px] text-slate-500">短剧名称</label>
+      <input type="text" class="inp" id="test-drama" placeholder="关键字" style="width:170px;" oninput="applyTestFilter()">
+    </div>
+    <div class="flex items-center gap-2 ml-auto">
+      <button class="btn-ghost" onclick="resetTestFilter()">重置</button>
+      <button class="btn-primary" onclick="applyTestFilter()">查询</button>
+    </div>
+  </div>
+  <!-- 4.2 列表 -->
+  <div class="overflow-x-auto">
+    <table class="tb" id="test-table">
+      <thead>
+        <tr>
+          <th style="width:100px;">素材ID</th>
+          <th style="width:200px;">素材名称</th>
+          <th style="width:140px;">短剧名称</th>
+          <th style="width:70px;">缩略图</th>
+          <th style="width:90px;">素材URL</th>
+          <th style="width:80px;">素材师</th>
+          <th class="sortable sorted" data-key="cost" onclick="sortTest('cost',this)" style="width:100px;">消耗<span class="sort-ind">▼</span></th>
+          <th class="sortable" data-key="ctr" onclick="sortTest('ctr',this)" style="width:80px;">CTR<span class="sort-ind">↕</span></th>
+          <th class="sortable" data-key="cvr" onclick="sortTest('cvr',this)" style="width:80px;">CVR<span class="sort-ind">↕</span></th>
+          <th class="sortable" data-key="roi" onclick="sortTest('roi',this)" style="width:80px;">ROI<span class="sort-ind">↕</span></th>
+          <th class="sortable" data-key="r3" onclick="sortTest('r3',this)" style="width:110px;">3秒完播率<span class="sort-ind">↕</span></th>
+          <th style="width:90px;">暗水印</th>
+          <th style="width:90px;">同质化</th>
+        </tr>
+      </thead>
+      <tbody id="test-tbody"></tbody>
+    </table>
+  </div>
+  <!-- 分页 -->
+  <div id="test-pager" class="flex items-center justify-between pt-3"></div>
+</section>
+
+<!-- 分割线：公司全域数据 -->
+<div class="flex items-center gap-3 py-1">
+  <div class="text-base font-semibold text-slate-900">公司全域数据</div>
+  <div class="flex-1 h-px bg-slate-200"></div>
+</div>
+
+<!-- ========== 5. 优质素材排行榜 ========== -->
+<section class="card p-4">
+  <div class="flex items-center justify-between mb-3">
+    <div>
+      <div class="sec-title">优质素材排行榜</div>
+      <div class="sec-sub">按 ROI≥1.2 且消耗≥5,000 的口径筛选优质素材，默认按消耗倒序</div>
+    </div>
+    <div class="text-xs text-slate-500">共 <span id="top-count" class="text-slate-900 font-medium">0</span> 条</div>
+  </div>
+  <!-- 5.1 查询 -->
+  <div class="bg-slate-50 rounded-lg p-3 mb-3 flex flex-wrap items-end gap-3">
+    <div class="flex flex-col gap-1">
+      <label class="text-[11px] text-slate-500">时间范围</label>
+      <select class="inp" id="top-range" onchange="applyRankFilter()" style="width:120px;">
+        <option value="1">近1天</option>
+        <option value="7" selected>近7天</option>
+        <option value="15">近15天</option>
+        <option value="30">近30天</option>
+      </select>
+    </div>
+    <div class="flex flex-col gap-1">
+      <label class="text-[11px] text-slate-500">素材ID</label>
+      <input type="text" class="inp" id="top-id" placeholder="支持精确/模糊" style="width:150px;" oninput="applyRankFilter()">
+    </div>
+    <div class="flex flex-col gap-1">
+      <label class="text-[11px] text-slate-500">素材名称</label>
+      <input type="text" class="inp" id="top-name" placeholder="关键字" style="width:170px;" oninput="applyRankFilter()">
+    </div>
+    <div class="flex flex-col gap-1">
+      <label class="text-[11px] text-slate-500">短剧名称</label>
+      <input type="text" class="inp" id="top-drama" placeholder="关键字" style="width:170px;" oninput="applyRankFilter()">
+    </div>
+    <div class="flex flex-col gap-1">
+      <label class="text-[11px] text-slate-500">素材师</label>
+      <input type="text" class="inp" id="top-author" placeholder="关键字" style="width:130px;" oninput="applyRankFilter()">
+    </div>
+    <div class="flex items-center gap-2 ml-auto">
+      <button class="btn-ghost" onclick="resetTopFilter2()">重置</button>
+      <button class="btn-primary" onclick="applyRankFilter()">查询</button>
+    </div>
+  </div>
+  <!-- 5.2 列表 -->
+  <div class="overflow-x-auto">
+    <table class="tb" id="top-table">
+      <thead>
+        <tr>
+          <th style="width:56px;">排名</th>
+          <th style="width:100px;">素材ID</th>
+          <th style="width:200px;">素材名称</th>
+          <th style="width:140px;">短剧名称</th>
+          <th style="width:70px;">缩略图</th>
+          <th style="width:90px;">素材URL</th>
+          <th style="width:80px;">素材师</th>
+          <th class="sortable sorted" data-key="cost" onclick="sortTop('cost',this)" style="width:100px;">消耗<span class="sort-ind">▼</span></th>
+          <th class="sortable" data-key="ctr" onclick="sortTop('ctr',this)" style="width:80px;">CTR<span class="sort-ind">↕</span></th>
+          <th class="sortable" data-key="cvr" onclick="sortTop('cvr',this)" style="width:80px;">CVR<span class="sort-ind">↕</span></th>
+          <th class="sortable" data-key="roi" onclick="sortTop('roi',this)" style="width:80px;">ROI<span class="sort-ind">↕</span></th>
+          <th class="sortable" data-key="r3" onclick="sortTop('r3',this)" style="width:110px;">3秒完播率<span class="sort-ind">↕</span></th>
+        </tr>
+      </thead>
+      <tbody id="top-tbody"></tbody>
+    </table>
+  </div>
+  <!-- 分页 -->
+  <div id="top-pager" class="flex items-center justify-between pt-3"></div>
+</section>
+
+<!-- ========== 6. 战区对比 ========== -->
+<section class="card p-4">
+  <div class="flex items-center justify-between mb-3">
+    <div>
+      <div class="sec-title">战区对比</div>
+      <div class="sec-sub">按战区/城市维度对比消耗趋势、资源效率与排名</div>
+    </div>
+  </div>
+  <!-- 6.1 筛选 -->
+  <div class="bg-slate-50 rounded-lg p-3 mb-4 flex flex-wrap items-end gap-4">
+    <div class="flex flex-col gap-1">
+      <label class="text-[11px] text-slate-500">日期范围</label>
+      <div class="flex items-center gap-1 bg-white rounded-lg p-1 border border-slate-200">
+        <button class="tab-btn" data-cmp-range="today" onclick="setCmpRange('today',this)">当日</button>
+        <button class="tab-btn active" data-cmp-range="7d" onclick="setCmpRange('7d',this)">7日</button>
+        <button class="tab-btn" data-cmp-range="30d" onclick="setCmpRange('30d',this)">30日</button>
+      </div>
+    </div>
+    <div class="flex flex-col gap-1" style="min-width:260px;">
+      <label class="text-[11px] text-slate-500">组织（多选）</label>
+      <div class="msel" id="msel-cmp">
+        <div class="msel-trigger" onclick="toggleMsel('msel-cmp',event)">
+          <span class="msel-text">全部战区/城市</span>
+          <span class="msel-arrow">▼</span>
+        </div>
+        <div class="msel-panel">
+          <div class="msel-group">战区</div>
+          <label class="msel-opt"><input type="checkbox" value="战区1" data-kind="warzone" onchange="cmpChange(this)">战区1</label>
+          <label class="msel-opt"><input type="checkbox" value="战区2" data-kind="warzone" onchange="cmpChange(this)">战区2</label>
+          <div class="msel-group">城市</div>
+          <label class="msel-opt"><input type="checkbox" value="广州" data-kind="city" data-wz="战区1" onchange="cmpChange(this)">广州（战区1）</label>
+          <label class="msel-opt"><input type="checkbox" value="重庆" data-kind="city" data-wz="战区1" onchange="cmpChange(this)">重庆（战区1）</label>
+          <label class="msel-opt"><input type="checkbox" value="北京" data-kind="city" data-wz="战区1" onchange="cmpChange(this)">北京（战区1）</label>
+          <label class="msel-opt"><input type="checkbox" value="杭州" data-kind="city" data-wz="战区1" onchange="cmpChange(this)">杭州（战区1）</label>
+          <label class="msel-opt"><input type="checkbox" value="南京" data-kind="city" data-wz="战区2" onchange="cmpChange(this)">南京（战区2）</label>
+          <label class="msel-opt"><input type="checkbox" value="合肥" data-kind="city" data-wz="战区2" onchange="cmpChange(this)">合肥（战区2）</label>
+        </div>
+      </div>
+    </div>
+    <div class="flex items-center gap-2 ml-auto">
+      <button class="btn-ghost" onclick="resetCmpFilter()">重置</button>
+      <button class="btn-primary" onclick="applyCmpFilter()">查询</button>
+    </div>
+  </div>
+
+  <!-- 6.2 消耗趋势对比 -->
+  <div class="mb-5">
+    <div class="flex items-center justify-between mb-2">
+      <div class="text-sm font-medium text-slate-800">消耗趋势对比</div>
+      <div class="text-[11px] text-slate-500">单位：元</div>
+    </div>
+    <div style="height:320px;"><canvas id="cmpTrendChart"></canvas></div>
+  </div>
+
+  <!-- 6.3 资源效率对比 -->
+  <div class="mb-5">
+    <div class="flex items-center justify-between mb-2">
+      <div class="text-sm font-medium text-slate-800">资源效率对比</div>
+      <div class="text-[11px] text-slate-500">柱高按各指标最大值归一化 · 悬停查看真实值</div>
+    </div>
+    <div class="grid grid-cols-3 gap-4">
+      <div class="col-span-2" style="height:380px;"><canvas id="cmpEffChart"></canvas></div>
+      <div class="flex flex-col justify-center gap-2 text-xs" id="eff-legend"></div>
+    </div>
+  </div>
+
+  <!-- 6.4 各组排名（二级表） -->
+  <div>
+    <div class="flex items-center justify-between mb-2">
+      <div class="text-sm font-medium text-slate-800">各组排名</div>
+      <div class="text-[11px] text-slate-500">按城市组消耗倒序 · 点击展开/收起组内素材师明细</div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="tb" id="rank-table">
+        <thead>
+          <tr>
+            <th style="width:60px;">排名</th>
+            <th style="width:180px;">组名</th>
+            <th style="width:70px;">人数</th>
+            <th style="width:90px;">产能</th>
+            <th style="width:100px;">人均产能</th>
+            <th style="width:100px;">优质素材数</th>
+            <th style="width:120px;">人均优质素材</th>
+            <th style="width:110px;">消耗</th>
+            <th style="width:90px;">URPU</th>
+            <th style="width:80px;">ROI</th>
+            <th style="width:140px;">同质化素材（占比）</th>
+            <th style="width:140px;">暗水印素材（占比）</th>
+          </tr>
+        </thead>
+        <tbody id="rank-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<footer class="text-center text-[11px] text-slate-400 py-4">
+  数据看板 · 原型 V1.0 · 沐雨晴
+</footer>
+
+</main>
+
+<!-- 素材预览弹窗 -->
+<div class="modal-mask" id="previewModal" onclick="if(event.target===this)closePreview()">
+  <div class="modal-card">
+    <div class="video-wrap">
+      <div class="video-ph">
+        <div class="play">▶</div>
+        <div class="dur" id="pv-dur">00:32</div>
+      </div>
+    </div>
+    <div class="p-4">
+      <div class="flex items-center justify-between mb-2">
+        <div class="text-sm font-semibold text-slate-900" id="pv-name">素材名称</div>
+        <span class="pill pill-slate" id="pv-id">M-0000</span>
+      </div>
+      <div class="text-xs text-slate-500 mb-3" id="pv-drama">短剧名称</div>
+      <div class="grid grid-cols-4 gap-2 text-center">
+        <div class="bg-slate-50 rounded-lg p-2"><div class="text-[10px] text-slate-500">消耗</div><div class="text-sm font-medium text-slate-900 num" id="pv-cost">-</div></div>
+        <div class="bg-slate-50 rounded-lg p-2"><div class="text-[10px] text-slate-500">CTR</div><div class="text-sm font-medium text-slate-900 num" id="pv-ctr">-</div></div>
+        <div class="bg-slate-50 rounded-lg p-2"><div class="text-[10px] text-slate-500">ROI</div><div class="text-sm font-medium text-slate-900 num" id="pv-roi">-</div></div>
+        <div class="bg-slate-50 rounded-lg p-2"><div class="text-[10px] text-slate-500">3秒完播</div><div class="text-sm font-medium text-slate-900 num" id="pv-r3">-</div></div>
+      </div>
+      <div class="flex items-center justify-between mt-4">
+        <div class="text-[11px] text-slate-500">素材师：<span id="pv-author" class="text-slate-700">-</span></div>
+        <button class="btn-ghost" onclick="closePreview()">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ========== 静态数据 ========== */
+const TEAMS = [
+  {id:'gz', name:'广州', wz:'战区1', color:'#6366f1', bg:'rgba(99,102,241,.15)'},
+  {id:'cq', name:'重庆', wz:'战区1', color:'#3b82f6', bg:'rgba(59,130,246,.15)'},
+  {id:'bj', name:'北京', wz:'战区1', color:'#8b5cf6', bg:'rgba(139,92,246,.15)'},
+  {id:'hz', name:'杭州', wz:'战区1', color:'#ec4899', bg:'rgba(236,72,153,.15)'},
+  {id:'nj', name:'南京', wz:'战区2', color:'#06b6d4', bg:'rgba(6,182,212,.15)'},
+  {id:'hf', name:'合肥', wz:'战区2', color:'#10b981', bg:'rgba(16,185,129,.15)'},
+];
+const AUTHORS = ['林墨','苏言','沈舟','谢临','江野','顾昀','许衔','温野','宋星','裴景'];
+const DRAMAS = ['长夜将明','雾都孤影','南风知我意','归途有灯','半山听雨','寒江雪','暮色之约','孤舟渡','霜落长安','星野入梦','烟火人间','子夜歌'];
+const STRUCTS = ['原片','解说','广播剧','注解','AI前贴','解压','滚屏','小说前贴'];
+const STRUCT_PILL = {'原片':'pill-emerald','解说':'pill-amber','广播剧':'pill-orange','注解':'pill-teal','AI前贴':'pill-rose','解压':'pill-pink','滚屏':'pill-cyan','小说前贴':'pill-indigo'};
+
+/* 生成 40 条素材 */
+function rnd(seed){let x=Math.sin(seed)*10000;return x-Math.floor(x);}
+function genMaterials(){
+  const list=[];
+  for(let i=0;i<40;i++){
+    const team=TEAMS[i%TEAMS.length];
+    const author=AUTHORS[Math.floor(rnd(i+1)*AUTHORS.length)];
+    const drama=DRAMAS[Math.floor(rnd(i+7)*DRAMAS.length)];
+    const struct=STRUCTS[Math.floor(rnd(i+13)*STRUCTS.length)];
+    const cost=Math.round(800+rnd(i+3)*38000);
+    const ctr=+(0.02+rnd(i+5)*0.09).toFixed(4);
+    const cvr=+(0.008+rnd(i+11)*0.05).toFixed(4);
+    const roi=+(0.5+rnd(i+17)*2.2).toFixed(2);
+    const r3=+(0.28+rnd(i+19)*0.55).toFixed(4);
+    const dark=rnd(i+23)>0.72;
+    const homo=rnd(i+29)>0.66;
+    const orig=rnd(i+31)>0.45?'原创':'非原创';
+    const stage=roi>=1.2&&cost>=5000?'优质':'测试';
+    list.push({
+      id:'M-'+String(2600+i*7).padStart(4,'0'),
+      name:`${drama}·${struct}·${String(i+1).padStart(2,'0')}版`,
+      drama,struct,author,cost,ctr,cvr,roi,r3,dark,homo,orig,stage,
+      team:team.name,teamId:team.id,
+      thumb:`https://picsum.photos/seed/${team.id}${i}/88/120`,
+      url:`https://cdn.example.com/mat/${team.id}-${2600+i*7}.mp4`,
+      dur:`00:${String(20+Math.floor(rnd(i+37)*40)).padStart(2,'0')}`
+    });
+  }
+  return list;
+}
+const MATERIALS = genMaterials();
+
+/* ========== 顶部筛选状态 ========== */
+let topState = {range:'today',depts:[],orig:'all'};
+
+function setTopRange(v,btn){
+  topState.range=v;
+  document.querySelectorAll('[data-range]').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const wrap=document.getElementById('top-custom-range');
+  if(v==='custom'){wrap.classList.remove('hidden');wrap.classList.add('flex');}
+  else{wrap.classList.add('hidden');wrap.classList.remove('flex');}
+}
+function setOrig(v,btn){
+  topState.orig=v;
+  document.querySelectorAll('[data-orig]').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function toggleMsel(id,e){
+  if(e)e.stopPropagation();
+  const el=document.getElementById(id);
+  document.querySelectorAll('.msel').forEach(m=>{if(m!==el)m.classList.remove('open');});
+  el.classList.toggle('open');
+}
+document.addEventListener('click',()=>{document.querySelectorAll('.msel').forEach(m=>m.classList.remove('open'));});
+document.querySelectorAll('.msel').forEach(m=>m.addEventListener('click',e=>e.stopPropagation()));
+
+function readMsel(id){
+  const boxes=document.querySelectorAll(`#${id} input[type=checkbox]`);
+  const zones=[],cities=[];
+  boxes.forEach(b=>{
+    if(b.checked){
+      if(b.dataset.kind==='warzone')zones.push(b.value);
+      else cities.push(b.value);
+    }
+  });
+  return {zones,cities};
+}
+function renderMselTrigger(id){
+  const {zones,cities}=readMsel(id);
+  const trig=document.querySelector(`#${id} .msel-trigger`);
+  const arrow='<span class="msel-arrow">▼</span>';
+  if(zones.length===0&&cities.length===0){
+    trig.innerHTML='<span class="msel-text">全部战区/城市</span>'+arrow;return;
+  }
+  const tags=[...zones,...cities].slice(0,3).map(t=>`<span class="msel-tag">${t}</span>`).join('');
+  const more=(zones.length+cities.length)>3?`<span class="msel-tag">+${zones.length+cities.length-3}</span>`:'';
+  trig.innerHTML=tags+more+arrow;
+}
+function deptChange(box){
+  // 战区全选/取消联动
+  if(box.dataset.kind==='warzone'){
+    const wz=box.value;
+    document.querySelectorAll(`#msel-dept input[data-wz="${wz}"]`).forEach(c=>c.checked=box.checked);
+  }else{
+    const wz=box.dataset.wz;
+    const siblings=[...document.querySelectorAll(`#msel-dept input[data-wz="${wz}"]`)];
+    const wzBox=document.querySelector(`#msel-dept input[value="${wz}"]`);
+    wzBox.checked=siblings.every(s=>s.checked);
+  }
+  renderMselTrigger('msel-dept');
+}
+function cmpChange(box){
+  if(box.dataset.kind==='warzone'){
+    const wz=box.value;
+    document.querySelectorAll(`#msel-cmp input[data-wz="${wz}"]`).forEach(c=>c.checked=box.checked);
+  }else{
+    const wz=box.dataset.wz;
+    const siblings=[...document.querySelectorAll(`#msel-cmp input[data-wz="${wz}"]`)];
+    const wzBox=document.querySelector(`#msel-cmp input[value="${wz}"]`);
+    wzBox.checked=siblings.every(s=>s.checked);
+  }
+  renderMselTrigger('msel-cmp');
+}
+function resetTopFilter(){
+  topState={range:'today',depts:[],orig:'all'};
+  document.querySelectorAll('[data-range]').forEach(b=>b.classList.toggle('active',b.dataset.range==='today'));
+  document.querySelectorAll('[data-orig]').forEach(b=>b.classList.toggle('active',b.dataset.orig==='all'));
+  document.querySelectorAll('#msel-dept input').forEach(c=>c.checked=false);
+  renderMselTrigger('msel-dept');
+  document.getElementById('top-custom-range').classList.add('hidden');
+  applyTopFilter();
+}
+function applyTopFilter(){
+  const {zones,cities}=readMsel('msel-dept');
+  topState.zones=zones;topState.cities=cities;
+  const rangeText={today:'当日','7d':'近7日','30d':'近30日',custom:'自定义'}[topState.range];
+  document.getElementById('chip-range').textContent='日期：'+rangeText;
+  const deptText=(zones.length+cities.length)===0?'全部':[...zones,...cities].join('、');
+  document.getElementById('chip-dept').textContent='部门：'+deptText;
+  document.getElementById('chip-orig').textContent='创作维度：'+topState.orig;
+  renderKPI();renderTrend();
+}
+
+/* ========== KPI ========== */
+function filterMaterials(){
+  let arr=MATERIALS.slice();
+  if(topState.orig!=='all')arr=arr.filter(m=>m.orig===topState.orig);
+  if(topState.zones&&topState.zones.length){
+    const citySet=new Set(topState.cities||[]);
+    arr=arr.filter(m=>{
+      const t=TEAMS.find(x=>x.id===m.teamId);
+      if(citySet.has(t.name))return true;
+      if(topState.zones.includes(t.wz)&&citySet.size===0)return true;
+      if(topState.zones.includes(t.wz))return true;
+      return false;
+    });
+  }else if(topState.cities&&topState.cities.length){
+    arr=arr.filter(m=>topState.cities.includes(TEAMS.find(x=>x.id===m.teamId).name));
+  }
+  return arr;
+}
+function fmtMoney(v){
+  if(v>=1e8)return '¥'+(v/1e8).toFixed(2)+'亿';
+  if(v>=1e4)return '¥'+(v/1e4).toFixed(1)+'万';
+  return '¥'+v.toLocaleString();
+}
+function fmtNum(v){return v.toLocaleString();}
+function fmtPct(v){return (v*100).toFixed(2)+'%';}
+
+function renderKPI(){
+  const arr=filterMaterials();
+  const total=arr.length;
+  const output=total;
+  const outputDelta=+(rnd(total+3)*30-8).toFixed(1);
+  const cost=arr.reduce((s,m)=>s+m.cost,0);
+  const costDelta=+(rnd(total+5)*24-6).toFixed(1);
+  const roi=cost>0?+(arr.reduce((s,m)=>s+m.cost*m.roi,0)/cost).toFixed(2):0;
+  const roiDelta=+(rnd(total+7)*16-5).toFixed(1);
+  const quality=arr.filter(m=>m.stage==='优质').length;
+  const qualityRate=total?quality/total:0;
+  const qrDelta=+(rnd(total+11)*12-4).toFixed(1);
+  const homo=arr.filter(m=>m.homo).length;
+  const homoRate=total?homo/total:0;
+  const homoDelta=+(rnd(total+13)*10-5).toFixed(1);
+  const dark=arr.filter(m=>m.dark).length;
+  const darkRate=total?dark/total:0;
+  const darkDelta=+(rnd(total+17)*10-5).toFixed(1);
+
+  const kpis=[
+    {label:'产出量',value:fmtNum(output)+' 条',delta:outputDelta,hint:'昨日 '+fmtNum(Math.max(1,output-Math.round(output*outputDelta/100)))+' 条'},
+    {label:'消耗数据',value:fmtMoney(cost),delta:costDelta,hint:'昨日 '+fmtMoney(Math.round(cost*0.87))},
+    {label:'ROI',value:roi.toFixed(2),delta:roiDelta,hint:'昨日 '+(roi*(1-roiDelta/200)).toFixed(2)},
+    {label:'优质率',value:fmtPct(qualityRate),delta:qrDelta,hint:'昨日 '+fmtPct(Math.max(0,qualityRate-qrDelta/400))},
+    {label:'同质素材占比',value:fmtPct(homoRate),delta:homoDelta,hint:'昨日 '+fmtPct(Math.max(0,homoRate-homoDelta/400))},
+    {label:'暗水印素材占比',value:fmtPct(darkRate),delta:darkDelta,hint:'昨日 '+fmtPct(Math.max(0,darkRate-darkDelta/400))},
+  ];
+  document.getElementById('kpi-grid').innerHTML=kpis.map(k=>`
+    <div class="kpi-card">
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value num">${k.value}</div>
+      <div class="kpi-delta">${k.hint} · 环比 <span class="${k.delta>=0?'up':'down'}">${k.delta>=0?'▲':'▼'}${Math.abs(k.delta).toFixed(1)}%</span></div>
+    </div>
+  `).join('');
+}
+
+/* ========== 产能趋势 ========== */
+let trendChart=null,trendMetric='all';
+function buildTrendData(){
+  const labels=[],out=[],cost=[],qr=[];
+  const base=new Date('2026-09-11');
+  if(topState.range==='today'){
+    // 当日按小时粒度
+    for(let h=0;h<24;h++){
+      labels.push(String(h).padStart(2,'0')+':00');
+      const seed=h+11;
+      out.push(Math.round(1+rnd(seed)*7));
+      cost.push(Math.round(2000+rnd(seed+3)*9000));
+      qr.push(+(18+rnd(seed+7)*22).toFixed(1));
+    }
+  }else{
+    const days=topState.range==='7d'?7:(topState.range==='30d'?30:14);
+    for(let i=days-1;i>=0;i--){
+      const d=new Date(base.getTime()-i*86400000);
+      labels.push((d.getMonth()+1)+'/'+d.getDate());
+      const seed=d.getDate()+d.getMonth()*31;
+      out.push(Math.round(28+rnd(seed)*40));
+      cost.push(Math.round(50000+rnd(seed+3)*140000));
+      qr.push(+(18+rnd(seed+7)*22).toFixed(1));
+    }
+  }
+  return {labels,out,cost,qr};
+}
+function renderTrend(){
+  const {labels,out,cost,qr}=buildTrendData();
+  const datasets=[];
+  if(trendMetric==='all'||trendMetric==='output'){
+    datasets.push({type:'bar',label:'产出量（条）',data:out,backgroundColor:'rgba(124,58,237,.75)',borderRadius:4,yAxisID:'y',order:2});
+  }
+  if(trendMetric==='all'||trendMetric==='cost'){
+    datasets.push({type:'line',label:'消耗（元）',data:cost,borderColor:'#0ea5e9',backgroundColor:'rgba(14,165,233,.12)',borderWidth:2,pointRadius:3,pointBackgroundColor:'#0ea5e9',tension:.35,fill:true,yAxisID:'y1',order:1});
+  }
+  if(trendMetric==='quality'){
+    datasets.push({type:'line',label:'优质率（%）',data:qr,borderColor:'#10b981',backgroundColor:'rgba(16,185,129,.12)',borderWidth:2,pointRadius:3,pointBackgroundColor:'#10b981',tension:.35,fill:true,yAxisID:'y1',order:1});
+  }
+  const cfg={
+    type:'bar',
+    data:{labels,datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'bottom',labels:{boxWidth:10,boxHeight:10,font:{size:11}}}},
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:11},color:'#64748b'}},
+        y:{position:'left',beginAtZero:true,grid:{color:'#f1f5f9'},ticks:{font:{size:11},color:'#64748b'},title:{display:datasets.some(d=>d.type==='bar'),text:'产出量（条）',font:{size:11},color:'#94a3b8'}},
+        y1:{position:'right',beginAtZero:true,grid:{display:false},ticks:{font:{size:11},color:'#64748b'},title:{display:datasets.some(d=>d.type==='line'),text:trendMetric==='quality'?'优质率（%）':'消耗（元）',font:{size:11},color:'#94a3b8'}}
+      }
+    }
+  };
+  if(trendChart)trendChart.destroy();
+  trendChart=new Chart(document.getElementById('trendChart'),cfg);
+}
+function setTrendMetric(v,btn){
+  trendMetric=v;
+  document.querySelectorAll('[data-metric]').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTrend();
+}
+
+/* ========== 测试素材列表 ========== */
+let testSort={key:'cost',dir:'desc'};
+let testPage=1;
+const PAGE_SIZE=8;
+function getTestList(){
+  const days=+document.getElementById('test-range').value;
+  const id=document.getElementById('test-id').value.trim().toLowerCase();
+  const name=document.getElementById('test-name').value.trim().toLowerCase();
+  const drama=document.getElementById('test-drama').value.trim().toLowerCase();
+  let arr=MATERIALS.filter(m=>m.stage==='测试');
+  if(days<=7)arr=arr.slice(0,Math.max(6,Math.round(arr.length*0.7)));
+  else if(days<=15)arr=arr.slice(0,Math.max(10,Math.round(arr.length*0.85)));
+  if(id)arr=arr.filter(m=>m.id.toLowerCase().includes(id));
+  if(name)arr=arr.filter(m=>m.name.toLowerCase().includes(name));
+  if(drama)arr=arr.filter(m=>m.drama.toLowerCase().includes(drama));
+  arr.sort((a,b)=>testSort.dir==='desc'?b[testSort.key]-a[testSort.key]:a[testSort.key]-b[testSort.key]);
+  return arr;
+}
+function renderPager(elId,total,page,goFn){
+  const pages=Math.max(1,Math.ceil(total/PAGE_SIZE));
+  if(page>pages)page=pages;
+  if(page<1)page=1;
+  let nums='';
+  for(let p=1;p<=pages;p++){
+    nums+=`<button class="page-btn num ${p===page?'active':''}" onclick="${goFn}(${p})">${p}</button>`;
+  }
+  document.getElementById(elId).innerHTML=`
+    <div class="text-xs text-slate-500">共 <b class="text-slate-700">${total}</b> 条 · 第 <b class="text-slate-700">${page}</b> / ${pages} 页</div>
+    <div class="flex items-center gap-1">
+      <button class="page-btn" onclick="${goFn}(${page-1})" ${page<=1?'disabled':''}>上一页</button>
+      ${nums}
+      <button class="page-btn" onclick="${goFn}(${page+1})" ${page>=pages?'disabled':''}>下一页</button>
+    </div>`;
+  return page;
+}
+function renderTest(){
+  const all=getTestList();
+  const total=all.length;
+  testPage=renderPager('test-pager',total,testPage,'goTestPage');
+  const arr=all.slice((testPage-1)*PAGE_SIZE,testPage*PAGE_SIZE);
+  document.getElementById('test-count').textContent=total;
+  document.getElementById('test-tbody').innerHTML=arr.map(m=>`
+    <tr>
+      <td class="num text-slate-500">${m.id}</td>
+      <td><div class="text-slate-800">${m.name}</div><div class="text-[11px] text-slate-400 mt-0.5"><span class="pill ${STRUCT_PILL[m.struct]||'pill-slate'}" style="padding:1px 6px;font-size:10px;">${m.struct}</span> · ${m.orig}</div></td>
+      <td class="text-slate-600">${m.drama}</td>
+      <td><img class="thumb" src="${m.thumb}" alt=""></td>
+      <td><span class="url-link" onclick="openPreviewById('${m.id}')">预览 ▶</span></td>
+      <td class="text-slate-600">${m.author}</td>
+      <td class="num font-medium text-slate-900">${fmtMoney(m.cost)}</td>
+      <td class="num">${fmtPct(m.ctr)}</td>
+      <td class="num">${fmtPct(m.cvr)}</td>
+      <td class="num ${m.roi>=1.2?'text-emerald-600 font-medium':(m.roi<0.8?'text-rose-600':'')}">${m.roi.toFixed(2)}</td>
+      <td class="num">${fmtPct(m.r3)}</td>
+      <td>${m.dark?'<span class="pill pill-rose">是</span>':'<span class="no">否</span>'}</td>
+      <td>${m.homo?'<span class="pill pill-amber">是</span>':'<span class="no">否</span>'}</td>
+    </tr>
+  `).join('')||`<tr><td colspan="13" class="text-center text-slate-400 py-8">无匹配数据</td></tr>`;
+}
+function goTestPage(p){testPage=p;renderTest();}
+function sortTest(k,th){
+  if(testSort.key===k)testSort.dir=testSort.dir==='desc'?'asc':'desc';
+  else{testSort.key=k;testSort.dir='desc';}
+  document.querySelectorAll('#test-table th.sortable').forEach(x=>{
+    x.classList.remove('sorted');
+    x.querySelector('.sort-ind').textContent='↕';
+  });
+  th.classList.add('sorted');
+  th.querySelector('.sort-ind').textContent=testSort.dir==='desc'?'▼':'▲';
+  renderTest();
+}
+function applyTestFilter(){testPage=1;renderTest();}
+function resetTestFilter(){
+  document.getElementById('test-range').value='7';
+  document.getElementById('test-id').value='';
+  document.getElementById('test-name').value='';
+  document.getElementById('test-drama').value='';
+  testPage=1;
+  renderTest();
+}
+
+/* ========== 优质素材榜 ========== */
+let topSort={key:'cost',dir:'desc'};
+let topPage=1;
+function getTopList(){
+  const days=+document.getElementById('top-range').value;
+  const id=document.getElementById('top-id').value.trim().toLowerCase();
+  const name=document.getElementById('top-name').value.trim().toLowerCase();
+  const drama=document.getElementById('top-drama').value.trim().toLowerCase();
+  const author=document.getElementById('top-author').value.trim().toLowerCase();
+  let arr=MATERIALS.filter(m=>m.stage==='优质');
+  if(days<=7)arr=arr.slice(0,Math.max(6,Math.round(arr.length*0.75)));
+  if(id)arr=arr.filter(m=>m.id.toLowerCase().includes(id));
+  if(name)arr=arr.filter(m=>m.name.toLowerCase().includes(name));
+  if(drama)arr=arr.filter(m=>m.drama.toLowerCase().includes(drama));
+  if(author)arr=arr.filter(m=>m.author.toLowerCase().includes(author));
+  arr.sort((a,b)=>topSort.dir==='desc'?b[topSort.key]-a[topSort.key]:a[topSort.key]-b[topSort.key]);
+  return arr;
+}
+function renderTop(){
+  const all=getTopList();
+  const total=all.length;
+  topPage=renderPager('top-pager',total,topPage,'goTopPage');
+  const arr=all.slice((topPage-1)*PAGE_SIZE,topPage*PAGE_SIZE);
+  const rankBase=(topPage-1)*PAGE_SIZE;
+  document.getElementById('top-count').textContent=total;
+  document.getElementById('top-tbody').innerHTML=arr.map((m,i)=>{
+    const rank=rankBase+i+1;
+    const badge=rank<=3?`<span class="rank-badge rank-${rank}">${rank}</span>`:`<span class="rank-badge rank-n">${rank}</span>`;
+    return `
+    <tr>
+      <td>${badge}</td>
+      <td class="num text-slate-500">${m.id}</td>
+      <td><div class="text-slate-800">${m.name}</div><div class="text-[11px] text-slate-400 mt-0.5"><span class="pill ${STRUCT_PILL[m.struct]||'pill-slate'}" style="padding:1px 6px;font-size:10px;">${m.struct}</span> · ${m.orig}</div></td>
+      <td class="text-slate-600">${m.drama}</td>
+      <td><img class="thumb" src="${m.thumb}" alt=""></td>
+      <td><span class="url-link" onclick="openPreviewById('${m.id}')">预览 ▶</span></td>
+      <td class="text-slate-600">${m.author}</td>
+      <td class="num font-medium text-slate-900">${fmtMoney(m.cost)}</td>
+      <td class="num">${fmtPct(m.ctr)}</td>
+      <td class="num">${fmtPct(m.cvr)}</td>
+      <td class="num text-emerald-600 font-medium">${m.roi.toFixed(2)}</td>
+      <td class="num">${fmtPct(m.r3)}</td>
+    </tr>`;
+  }).join('')||`<tr><td colspan="12" class="text-center text-slate-400 py-8">无匹配数据</td></tr>`;
+}
+function sortTop(k,th){
+  if(topSort.key===k)topSort.dir=topSort.dir==='desc'?'asc':'desc';
+  else{topSort.key=k;topSort.dir='desc';}
+  document.querySelectorAll('#top-table th.sortable').forEach(x=>{
+    x.classList.remove('sorted');
+    x.querySelector('.sort-ind').textContent='↕';
+  });
+  th.classList.add('sorted');
+  th.querySelector('.sort-ind').textContent=topSort.dir==='desc'?'▼':'▲';
+  renderTop();
+}
+function goTopPage(p){topPage=p;renderTop();}
+function applyRankFilter(){topPage=1;renderTop();}
+function resetTopFilter2(){
+  document.getElementById('top-range').value='7';
+  document.getElementById('top-id').value='';
+  document.getElementById('top-name').value='';
+  document.getElementById('top-drama').value='';
+  document.getElementById('top-author').value='';
+  topPage=1;
+  renderTop();
+}
+
+/* ========== 预览弹窗 ========== */
+function openPreviewById(id){
+  const m=MATERIALS.find(x=>x.id===id);
+  if(m)openPreview(m);
+}
+function openPreview(m){
+  document.getElementById('pv-name').textContent=m.name;
+  document.getElementById('pv-id').textContent=m.id;
+  document.getElementById('pv-drama').textContent='短剧：'+m.drama+' · 结构：'+m.struct+' · 时长：'+m.dur;
+  document.getElementById('pv-cost').textContent=fmtMoney(m.cost);
+  document.getElementById('pv-ctr').textContent=fmtPct(m.ctr);
+  document.getElementById('pv-roi').textContent=m.roi.toFixed(2);
+  document.getElementById('pv-r3').textContent=fmtPct(m.r3);
+  document.getElementById('pv-author').textContent=m.author;
+  document.getElementById('pv-dur').textContent=m.dur;
+  document.getElementById('previewModal').classList.add('open');
+}
+function closePreview(){document.getElementById('previewModal').classList.remove('open');}
+
+/* ========== 战区对比 ========== */
+let cmpState={range:'7d',zones:[],cities:[]};
+function setCmpRange(v,btn){
+  cmpState.range=v;
+  document.querySelectorAll('[data-cmp-range]').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function resetCmpFilter(){
+  cmpState={range:'7d',zones:[],cities:[]};
+  document.querySelectorAll('[data-cmp-range]').forEach(b=>b.classList.toggle('active',b.dataset.cmpRange==='7d'));
+  document.querySelectorAll('#msel-cmp input').forEach(c=>c.checked=false);
+  renderMselTrigger('msel-cmp');
+  applyCmpFilter();
+}
+function applyCmpFilter(){
+  const {zones,cities}=readMsel('msel-cmp');
+  cmpState.zones=zones;cmpState.cities=cities;
+  renderCmpTrend();renderEfficiency();renderRank();
+}
+function activeTeams(){
+  const zones=cmpState.zones||[],cities=cmpState.cities||[];
+  if(!zones.length&&!cities.length)return TEAMS.slice();
+  return TEAMS.filter(t=>cities.includes(t.name)||zones.includes(t.wz));
+}
+let cmpTrendChart=null;
+function renderCmpTrend(){
+  const days=cmpState.range==='today'?1:(cmpState.range==='7d'?7:30);
+  const labels=[];
+  const base=new Date('2026-09-11');
+  for(let i=days-1;i>=0;i--){
+    const d=new Date(base.getTime()-i*86400000);
+    labels.push((d.getMonth()+1)+'/'+d.getDate());
+  }
+  const teams=activeTeams();
+  const datasets=teams.map((t,idx)=>{
+    const data=labels.map((_,i)=>Math.round(8000+rnd(i*13+idx*7+days)*(30000+idx*4000)));
+    return {label:t.name+'（'+t.wz+'）',data,borderColor:t.color,backgroundColor:t.bg,borderWidth:2,pointRadius:2.5,tension:.35,fill:false};
+  });
+  const cfg={
+    type:'line',
+    data:{labels,datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'bottom',labels:{boxWidth:10,boxHeight:10,font:{size:11}}}},
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:11},color:'#64748b'}},
+        y:{beginAtZero:true,grid:{color:'#f1f5f9'},ticks:{font:{size:11},color:'#64748b',callback:v=>v>=10000?(v/10000)+'万':v}}
+      }
+    }
+  };
+  if(cmpTrendChart)cmpTrendChart.destroy();
+  cmpTrendChart=new Chart(document.getElementById('cmpTrendChart'),cfg);
+}
+
+let cmpEffChart=null;
+const EFF_METRICS=['人均产能','URPU','人均优质素材数','测试消耗','ROI'];
+function teamEfficiency(t){
+  const s=teamStats(t);
+  const testCost=MATERIALS.filter(m=>m.teamId===t.id&&m.stage==='测试').reduce((a,m)=>a+m.cost,0);
+  return {
+    '人均产能':s.perCapita,
+    'URPU':s.urpu,
+    '人均优质素材数':s.perQuality,
+    '测试消耗':testCost,
+    'ROI':s.roi
+  };
+}
+function fmtEff(k,v){
+  if(k==='URPU'||k==='测试消耗')return fmtMoney(v);
+  if(k==='人均产能')return v.toFixed(1)+' 条/人';
+  if(k==='人均优质素材数')return v.toFixed(2)+' 条/人';
+  return v.toFixed(2);
+}
+function renderEfficiency(){
+  const teams=activeTeams();
+  const eff=teams.map(teamEfficiency);
+  const maxes={};
+  EFF_METRICS.forEach(k=>{maxes[k]=Math.max.apply(null,eff.map(e=>e[k]).concat([0.0001]));});
+  const datasets=teams.map((t,i)=>({
+    label:t.name,
+    data:EFF_METRICS.map(k=>+(eff[i][k]/maxes[k]*100).toFixed(1)),
+    backgroundColor:t.color,
+    borderRadius:3,
+    maxBarThickness:24
+  }));
+  const cfg={
+    type:'bar',
+    data:{labels:EFF_METRICS,datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{position:'bottom',labels:{boxWidth:10,boxHeight:10,font:{size:11}}},
+        tooltip:{callbacks:{label:function(ctx){
+          const t=teams[ctx.datasetIndex];
+          const k=EFF_METRICS[ctx.dataIndex];
+          return ' '+t.name+'：'+fmtEff(k,teamEfficiency(t)[k])+'（归一化 '+ctx.parsed.y+'）';
+        }}}
+      },
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:12},color:'#334155'}},
+        y:{beginAtZero:true,max:100,grid:{color:'#f1f5f9'},ticks:{font:{size:11},color:'#94a3b8'},title:{display:true,text:'归一化得分',font:{size:11},color:'#94a3b8'}}
+      }
+    }
+  };
+  if(cmpEffChart)cmpEffChart.destroy();
+  cmpEffChart=new Chart(document.getElementById('cmpEffChart'),cfg);
+  document.getElementById('eff-legend').innerHTML=teams.map((t,i)=>{
+    const e=eff[i];
+    return `<div class="flex items-start gap-2 p-2 rounded-lg hover:bg-slate-50">
+      <span class="dot mt-1" style="background:${t.color}"></span>
+      <div class="flex-1">
+        <div class="text-slate-800 font-medium">${t.name} <span class="text-[10px] text-slate-400">${t.wz}</span></div>
+        <div class="text-[11px] text-slate-500 mt-1 grid grid-cols-2 gap-x-2 gap-y-0.5">
+          ${EFF_METRICS.map(k=>`<span>${k} <b class="text-slate-700">${fmtEff(k,e[k])}</b></span>`).join('')}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* 6.4 排名二级表：一级=城市组，二级=组内素材师 */
+const groupCollapsed={};
+function teamStats(t){
+  const mats=MATERIALS.filter(m=>m.teamId===t.id);
+  const cost=mats.reduce((s,m)=>s+m.cost,0);
+  const output=mats.length;
+  const quality=mats.filter(m=>m.stage==='优质').length;
+  const homo=mats.filter(m=>m.homo).length;
+  const dark=mats.filter(m=>m.dark).length;
+  const people=new Set(mats.map(m=>m.author)).size||1;
+  const roi=cost?+(mats.reduce((s,m)=>s+m.cost*m.roi,0)/cost).toFixed(2):0;
+  return {cost,output,quality,homo,dark,people,roi,perCapita:+(output/people).toFixed(1),perQuality:+(quality/people).toFixed(2),urpu:Math.round(cost/people)};
+}
+function memberStats(t,author){
+  const mats=MATERIALS.filter(m=>m.teamId===t.id&&m.author===author);
+  const cost=mats.reduce((s,m)=>s+m.cost,0);
+  const output=mats.length;
+  const quality=mats.filter(m=>m.stage==='优质').length;
+  const homo=mats.filter(m=>m.homo).length;
+  const dark=mats.filter(m=>m.dark).length;
+  const roi=cost?+(mats.reduce((s,m)=>s+m.cost*m.roi,0)/cost).toFixed(2):0;
+  return {cost,output,quality,homo,dark,roi,urpu:Math.round(cost)};
+}
+function renderRank(){
+  const rows=[];
+  const groups=activeTeams().map(t=>({t,s:teamStats(t)})).sort((a,b)=>b.s.cost-a.s.cost);
+  groups.forEach((g,i)=>{
+    const s=g.s,t=g.t;
+    const rank=i+1;
+    const badge=rank<=3?`<span class="rank-badge rank-${rank}">${rank}</span>`:`<span class="rank-badge rank-n">${rank}</span>`;
+    const collapsed=!!groupCollapsed[t.id];
+    const wzPill=t.wz==='战区1'?'pill-indigo':'pill-cyan';
+    rows.push(`<tr class="group-row" onclick="toggleGroup('${t.id}')">
+      <td>${badge}</td>
+      <td><span class="toggle-ico ${collapsed?'collapsed':''}">▼</span> <span class="dot" style="background:${t.color}"></span>${t.name} <span class="pill ${wzPill}" style="padding:1px 6px;font-size:10px;margin-left:4px;">${t.wz}</span></td>
+      <td class="num">${s.people}</td>
+      <td class="num">${s.output}</td>
+      <td class="num">${s.perCapita}</td>
+      <td class="num">${s.quality}</td>
+      <td class="num">${s.perQuality}</td>
+      <td class="num">${fmtMoney(s.cost)}</td>
+      <td class="num">${fmtMoney(s.urpu)}</td>
+      <td class="num ${s.roi>=1.2?'text-emerald-600':''}">${s.roi.toFixed(2)}</td>
+      <td class="num">${s.homo} <span class="text-slate-400">(${fmtPct(s.homo/s.output)})</span></td>
+      <td class="num">${s.dark} <span class="text-slate-400">(${fmtPct(s.dark/s.output)})</span></td>
+    </tr>`);
+    if(!collapsed){
+      const members=[...new Set(MATERIALS.filter(m=>m.teamId===t.id).map(m=>m.author))]
+        .map(a=>({a,s:memberStats(t,a)})).sort((x,y)=>y.s.cost-x.s.cost);
+      members.forEach(mb=>{
+        rows.push(`<tr class="child-row">
+          <td></td>
+          <td><span class="member-avatar">${mb.a.charAt(0)}</span>${mb.a} <span class="text-[10px] text-slate-400">素材师</span></td>
+          <td class="num text-slate-300">-</td>
+          <td class="num">${mb.s.output}</td>
+          <td class="num text-slate-300">-</td>
+          <td class="num">${mb.s.quality}</td>
+          <td class="num text-slate-300">-</td>
+          <td class="num">${fmtMoney(mb.s.cost)}</td>
+          <td class="num">${fmtMoney(mb.s.urpu)}</td>
+          <td class="num ${mb.s.roi>=1.2?'text-emerald-600':''}">${mb.s.roi.toFixed(2)}</td>
+          <td class="num">${mb.s.homo} <span class="text-slate-400">(${fmtPct(mb.s.homo/mb.s.output)})</span></td>
+          <td class="num">${mb.s.dark} <span class="text-slate-400">(${fmtPct(mb.s.dark/mb.s.output)})</span></td>
+        </tr>`);
+      });
+    }
+  });
+  document.getElementById('rank-tbody').innerHTML=rows.join('')||`<tr><td colspan="12" class="text-center text-slate-400 py-8">无匹配数据</td></tr>`;
+}
+function toggleGroup(id){
+  groupCollapsed[id]=!groupCollapsed[id];
+  renderRank();
+}
+
+/* ========== init ========== */
+renderKPI();renderTrend();renderTest();renderTop();renderCmpTrend();renderEfficiency();renderRank();
+renderMselTrigger('msel-dept');renderMselTrigger('msel-cmp');
+</script>
+</body>
+</html>
